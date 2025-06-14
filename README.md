@@ -31,25 +31,14 @@ Khởi động ứng dụng như Google Chrome qua lệnh thoại hoặc dòng l
 
 Example Commands
 bash
-create folder "T1" in Desktop
-ssh into Revoland server
-where is the T2 folder?
-add my phone number to memory
-clone this repo into Linux folder
-Project Structure
-csharp
-Copy
-Edit
-ai-agent-go/
-├── cmd/                     # Entry point và CLI logic
-├── internal/
-│   ├── chat_interaction/    # Xử lý tương tác chat và memory
-│   ├── command_func/        # Phân tích và thực thi lệnh hệ thống
-│   └── folder_func/         # Chức năng thao tác thư mục
-├── memory.txt               # File lưu trữ thông tin dạng fact
-├── ai-agent-go.mod
-├── go.mod
-└── main.go
+sewn@Mac-mini-cua-Nguyen SwxProject % cd ai-agent-go 
+sewn@Mac-mini-cua-Nguyen ai-agent-go % go build .    
+sewn@Mac-mini-cua-Nguyen ai-agent-go % go run .      
+Hi user!
+>>> Where is the location of T1 folder ?
+Classifying input:  Question
+✅ Answer from memory: The location of the T1 folder is at /Users/sewn/Desktop/T1.
+
 Requirements
 Go 1.20+
 
