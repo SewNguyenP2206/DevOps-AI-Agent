@@ -147,7 +147,7 @@ Return a JSON object like:
   "folder_name": "the-folder-name",
   "location": "the-location-keyword-or-null"
 }																							
-If location is not specified or not found in memory, use null. If folder name is missing, leave it blank.
+Look for the directory of the location used mentioned,if location is not specified or not found in memory, use null for location. If folder name is missing, leave it blank.
 Return only JSON, no explanation.
 `, input)
 	resp, err := llm_tool.AskLLM(prompt)

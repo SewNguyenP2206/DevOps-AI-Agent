@@ -13,17 +13,25 @@ import (
 )
 
 func main() {
-	memory, err := memory_func.LoadMemory("memory.txt")
-	if err != nil {
-		fmt.Println("Cannot load memory:", err)
-		memory = []string{}
-	}
 
 	fmt.Println("Hi user!")
-	RunLoop(memory)
+	RunLoop()
 }
 
-func RunLoop(memory []string) {
+func RunLoop() {
+
+	devOpsMemory, err := memory_func.LoadMemory("devOpsMemory.txt")
+	if err != nil {
+		fmt.Println("Cannot load devOpsMemory:", err)
+		devOpsMemory = []string{}
+	}
+
+	personalMemory, err := memory_func.LoadMemory("personalMemory.txt")
+	if err != nil {
+		fmt.Println("Cannot load persionalMemory:", err)
+		personalMemory = []string{}
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -44,11 +52,11 @@ func RunLoop(memory []string) {
 
 		switch classType {
 		case "Add":
-			chat_interaction.HandleAdd(input, &memory)
-		case "Question":
-			chat_interaction.HandleQuestion(input, memory, reader)
+			chat_interaction.HandleAdd(input, &devOpsMemory)
+		case "OperationSystemQuestion":
+			chat_interaction.HandleQuestion(input, devOpsMemory, reader)
 		case "Command":
-			cmd, err := command_func.HandleCommand(input, memory)
+			cmd, err := command_func.HandleCommand(input, devOpsMemory)
 			if err != nil {
 				fmt.Println("Command Error:", err)
 				continue
@@ -63,7 +71,7 @@ func RunLoop(memory []string) {
 			}
 			continue
 		case "Update":
-			cmd, err := chat_interaction.HandleUpdate(input, memory)
+			cmd, err := chat_interaction.HandleUpdate(input, devOpsMemory)
 			if err != nil {
 				fmt.Println("Command Error:", err)
 				continue
@@ -71,10 +79,16 @@ func RunLoop(memory []string) {
 			fmt.Println("Updating information...", cmd)
 			continue
 		case "DeleteFolder":
-			folder_func.HandleDeleteFolder(input, reader, &memory)
+			folder_func.HandleDeleteFolder(input, reader, &devOpsMemory)
 			continue
 		case "CreateFolder":
-			folder_func.HandleCreateFolder(input, reader, &memory)
+			folder_func.HandleCreateFolder(input, reader, &devOpsMemory)
+			continue
+		case "PersonalInformationAddition":
+			chat_interaction.HandlePersionalInformationAdd(input, &personalMemory)
+			continue
+		case "PersonalInformationQuestion":
+			chat_interaction.HandlePersionalInformationQuestion(input, personalMemory, reader)
 			continue
 		default:
 			fmt.Println("Agent: I didn't understand your intent.")
@@ -87,12 +101,16 @@ func ClassifyInput(input string) (string, error) {
 You are a classification bot.
 
 Your job is to classify the user's message into **only one** of the following types:
-- Question
+- OperationSystemQuestion
 - DeleteFolder 
 - Add
 - Command
 - Update
 - CreateFolder
+- PersonalInformationAddition
+- PersonalInformationUpdate
+- PersonalInformationQuestion
+- PersonalInformationDelete
 - Unknown
 
 Message:
