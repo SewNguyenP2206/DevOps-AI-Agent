@@ -1,2 +1,4 @@
-User's name is Johan
-User's age is 19 years old.
+The directory of Linux is /Users/sewn/Desktop/Linux
+The directory of Go is /Users/sewn/Desktop/GoProject/Go
+Cloned repository https://github.com/kztoan01/real-estate-platform.git to /Users/sewn/Desktop/Linux/realestate
+The directory of - Add → For instructions to add something new to memory is - Command → For general system commands (open, close, restart)

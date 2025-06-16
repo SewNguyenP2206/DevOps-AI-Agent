@@ -4,6 +4,7 @@ import (
 	"ai-agent-go/internal/chat_interaction"
 	"ai-agent-go/internal/command_func"
 	"ai-agent-go/internal/folder_func"
+	"ai-agent-go/internal/git_func"
 	"ai-agent-go/internal/llm_tool"
 	"ai-agent-go/internal/memory_func"
 	"bufio"
@@ -90,6 +91,9 @@ func RunLoop() {
 		case "PersonalInformationQuestion":
 			chat_interaction.HandlePersionalInformationQuestion(input, personalMemory, reader)
 			continue
+		case "CloneGitRepositoryRequest":
+			git_func.HandleGitCloneRequest(input, &devOpsMemory)
+			continue
 		default:
 			fmt.Println("Agent: I didn't understand your intent.")
 		}
@@ -98,11 +102,16 @@ func RunLoop() {
 
 func ClassifyInput(input string) (string, error) {
 	prompt := fmt.Sprintf(`
-You are a classification bot.
+You are an AI assistant that classifies the user's message into only one of the following types:
 
-Your job is to classify the user's message into **only one** of the following types:
-- OperationSystemQuestion
-- DeleteFolder 
+### Informational (questions)
+- OperationSystemQuestion → for questions about folders, files, Git repo info like "What is the URL of the Git repo?" or "Where is the Linux folder?"
+
+### Action-based commands
+- CloneGitRepositoryRequest → only if the user explicitly wants to clone a Git repository (e.g., "Clone the Git repo into X folder", "Download my project from GitHub")
+
+Other types:
+- DeleteFolder
 - Add
 - Command
 - Update
@@ -113,14 +122,11 @@ Your job is to classify the user's message into **only one** of the following ty
 - PersonalInformationDelete
 - Unknown
 
-Message:
+Classify this message:
 %s
 
-Return only the classification **as one of the exact words above**.
-Do not explain.
-Do not include quotes.
-Do not include any tags like <think>.
-Only return one word.`, input)
+Return ONLY one of the above class names as plain text, no quotes or extra text.
+`, input)
 
 	resp, err := llm_tool.AskLLM(prompt)
 	fmt.Println("Classifying input:", resp)
