@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ai-agent-go/internal/app_interaction"
 	"ai-agent-go/internal/chat_interaction"
 	"ai-agent-go/internal/command_func"
 	"ai-agent-go/internal/folder_func"
@@ -94,6 +95,15 @@ func RunLoop() {
 		case "CloneGitRepositoryRequest":
 			git_func.HandleGitCloneRequest(input, &devOpsMemory)
 			continue
+		case "PullGitRepositoryRequest":
+			git_func.HanldeGitPullRequest(input, &devOpsMemory)
+			continue
+		case "OpenApplication":
+			app_interaction.HandleAppOpenRequest(input, &devOpsMemory)
+			continue
+		case "CloseApplication":
+			app_interaction.HandleAppCloseRequest(input, &devOpsMemory)
+			continue
 		default:
 			fmt.Println("Agent: I didn't understand your intent.")
 		}
@@ -109,9 +119,12 @@ You are an AI assistant that classifies the user's message into only one of the 
 
 ### Action-based commands
 - CloneGitRepositoryRequest → only if the user explicitly wants to clone a Git repository (e.g., "Clone the Git repo into X folder", "Download my project from GitHub")
+- PullGitRepositoryRequest → only if the user explicitly wants to pull a Git repository (e.g., "Pull the latest changes from my Git repo", "Update my project from GitHub")
 
 Other types:
 - DeleteFolder
+- OpenApplication
+- CloseApplication
 - Add
 - Command
 - Update
