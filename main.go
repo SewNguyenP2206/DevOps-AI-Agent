@@ -2,7 +2,6 @@ package main
 
 import (
 	"ai-agent-go/internal/app_interaction"
-	"ai-agent-go/internal/chat_interaction"
 	"ai-agent-go/internal/command_func"
 	"ai-agent-go/internal/folder_func"
 	"ai-agent-go/internal/git_func"
@@ -28,12 +27,6 @@ func RunLoop() {
 		devOpsMemory = []string{}
 	}
 
-	personalMemory, err := memory_func.LoadMemory("personalMemory.txt")
-	if err != nil {
-		fmt.Println("Cannot load persionalMemory:", err)
-		personalMemory = []string{}
-	}
-
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -53,10 +46,6 @@ func RunLoop() {
 		}
 
 		switch classType {
-		case "Add":
-			chat_interaction.HandleAdd(input, &devOpsMemory)
-		case "OperationSystemQuestion":
-			chat_interaction.HandleQuestion(input, devOpsMemory, reader)
 		case "Command":
 			cmd, err := command_func.HandleCommand(input, devOpsMemory)
 			if err != nil {
@@ -72,25 +61,11 @@ func RunLoop() {
 				fmt.Println("✅ SSH command sent to new Terminal window.")
 			}
 			continue
-		case "Update":
-			cmd, err := chat_interaction.HandleUpdate(input, devOpsMemory)
-			if err != nil {
-				fmt.Println("Command Error:", err)
-				continue
-			}
-			fmt.Println("Updating information...", cmd)
-			continue
 		case "DeleteFolder":
 			folder_func.HandleDeleteFolder(input, reader, &devOpsMemory)
 			continue
 		case "CreateFolder":
 			folder_func.HandleCreateFolder(input, reader, &devOpsMemory)
-			continue
-		case "PersonalInformationAddition":
-			chat_interaction.HandlePersionalInformationAdd(input, &personalMemory)
-			continue
-		case "PersonalInformationQuestion":
-			chat_interaction.HandlePersionalInformationQuestion(input, personalMemory, reader)
 			continue
 		case "CloneGitRepositoryRequest":
 			git_func.HandleGitCloneRequest(input, &devOpsMemory)
@@ -129,10 +104,6 @@ Other types:
 - Command
 - Update
 - CreateFolder
-- PersonalInformationAddition
-- PersonalInformationUpdate
-- PersonalInformationQuestion
-- PersonalInformationDelete
 - Unknown
 
 Classify this message:

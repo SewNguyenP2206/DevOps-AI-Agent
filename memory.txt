@@ -1,4 +1,5 @@
-The directory of Linux is /Users/sewn/Desktop/Linux
-The directory of Go is /Users/sewn/Desktop/GoProject/Go
-Cloned repository https://github.com/kztoan01/real-estate-platform.git to /Users/sewn/Desktop/Linux/realestate
-The directory of - Add → For instructions to add something new to memory is - Command → For general system commands (open, close, restart)
+folder:Desktop|parent:__root__|path:/Users/sewn/Desktop
+folder:DevOps|parent:Desktop|path:/Users/sewn/Desktop/DevOps
+folder:JPT|parent:Desktop|path:/Users/sewn/Desktop/JPT
+folder:Projects|parent:DevOps|path:/Users/sewn/Desktop/DevOps/Projects
+folder:Projects|parent:JPT|path:/Users/sewn/Desktop/JPT/Projects

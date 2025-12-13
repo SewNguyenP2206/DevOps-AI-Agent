@@ -9,11 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 func HandleCreateFolder(input string, reader *bufio.Reader, memory *[]string) {
-	// Try to extract folder name and location using LLM
+	// Step 1 — AI extract folder and location
 	prompt := fmt.Sprintf(`
 You are an AI assistant. Extract the folder name and location from this message:
 
@@ -25,8 +26,9 @@ Return a JSON object like:
   "location": "the-location-keyword-or-null"
 }
 
-If location is not specified or not found in memory, use null. If folder name is missing, leave it blank.
-Return only JSON, no explanation.
+If folder name not found → blank.
+If location missing → null.
+Return ONLY JSON.
 `, input)
 
 	resp, err := llm_tool.AskLLM(prompt)
@@ -35,105 +37,172 @@ Return only JSON, no explanation.
 		return
 	}
 
-	print("AI response:", resp)
-
-	var folderName, location string
-	type folderExtract struct {
+	type Extract struct {
 		FolderName string `json:"folder_name"`
 		Location   string `json:"location"`
 	}
-	var result folderExtract
-	if err := json.Unmarshal([]byte(resp), &result); err == nil {
-		folderName = strings.TrimSpace(result.FolderName)
-		location = strings.TrimSpace(result.Location)
+
+	var ex Extract
+	if err := json.Unmarshal([]byte(resp), &ex); err != nil {
+		fmt.Println("❌ AI JSON parse failed:", err)
+		return
 	}
 
+	folderName := strings.TrimSpace(ex.FolderName)
+	location := strings.TrimSpace(ex.Location)
+
+	// Ask location if AI couldn't detect
 	if location == "" || location == "null" {
-		fmt.Println("❗ Location not specified. What is the name of the location you want to create the folder in ?")
-		fmt.Print(">>> Enter the location keyword: ")
-		locationInput, _ := reader.ReadString('\n')
-		location = strings.TrimSpace(locationInput)
+		fmt.Println("❗ Location not specified. What is the name of the location you want to create the folder in?")
+		fmt.Print(">>> Enter location keyword: ")
+		locInput, _ := reader.ReadString('\n')
+		location = strings.TrimSpace(locInput)
 		if location == "" {
 			fmt.Println("❌ Location cannot be empty.")
 			return
 		}
 	}
 
-	// Resolve location to absolute path from memory
-	absPath := ""
-	if location != "" && location != "null" {
-		for _, line := range *memory {
-			if strings.HasSuffix(strings.ToLower(line), "directory is "+strings.ToLower(location)) ||
-				strings.HasSuffix(strings.ToLower(line), "folder is "+strings.ToLower(location)) ||
-				strings.Contains(strings.ToLower(line), "directory of "+strings.ToLower(location)+" is") ||
-				strings.Contains(strings.ToLower(line), "folder of "+strings.ToLower(location)+" is") {
-				absPath = extractValueFromFact(line)
-				break
-			}
-		}
+	// -------------------------------------------------------------
+	// NEW MEMORY SYSTEM — folder:<name>|parent:<parent>|path:<path>
+	// -------------------------------------------------------------
+
+	// Helper: parse memory entry
+	type FolderFact struct {
+		Folder string
+		Parent string
+		Path   string
 	}
 
-	// Nếu chưa có absolute path, hỏi user
-	if absPath == "" {
-		fmt.Printf("❓ I don't know where \"%s\" is. Please provide the full path: ", location)
-		inputPath, _ := reader.ReadString('\n')
-		inputPath = strings.TrimSpace(inputPath)
-		if inputPath == "" {
+	parseFact := func(line string) (*FolderFact, bool) {
+		parts := strings.Split(line, "|")
+		if len(parts) != 3 {
+			return nil, false
+		}
+		f := &FolderFact{}
+		for _, p := range parts {
+			kv := strings.SplitN(p, ":", 2)
+			if len(kv) != 2 {
+				continue
+			}
+			k := strings.TrimSpace(kv[0])
+			v := strings.TrimSpace(kv[1])
+			switch k {
+			case "folder":
+				f.Folder = v
+			case "parent":
+				f.Parent = v
+			case "path":
+				f.Path = v
+			}
+		}
+		return f, true
+	}
+
+	// Find all folder matches by name
+	location = strings.TrimSpace(strings.Trim(location, "\""))
+	resolveLocation := func(name string) []*FolderFact {
+		var matches []*FolderFact
+		for _, line := range *memory {
+			if fact, ok := parseFact(line); ok {
+				if strings.EqualFold(fact.Folder, name) {
+					matches = append(matches, fact)
+				}
+			}
+		}
+		return matches
+	}
+
+	// Ask user to choose from multiple matches
+	chooseFolder := func(matches []*FolderFact) *FolderFact {
+		fmt.Println("❓ Multiple folders found with name:", matches[0].Folder)
+		for i, f := range matches {
+			fmt.Printf("%d) %s/%s → %s\n", i+1, f.Parent, f.Folder, f.Path)
+		}
+		fmt.Print(">>> Choose number: ")
+		raw, _ := reader.ReadString('\n')
+		raw = strings.TrimSpace(raw)
+		index, _ := strconv.Atoi(raw)
+		if index < 1 || index > len(matches) {
+			fmt.Println("❌ Invalid choice.")
+			return nil
+		}
+		return matches[index-1]
+	}
+
+	// --- Resolve parent folder path ---
+	var absPath string
+	matches := resolveLocation(location)
+
+	if len(matches) == 0 {
+		// Not found — ask user full path
+		fmt.Printf("❓ I don't know where \"%s\" is. Please provide the full absolute path: ", location)
+		pathInput, _ := reader.ReadString('\n')
+		pathInput = strings.TrimSpace(pathInput)
+		if pathInput == "" {
 			fmt.Println("❌ Path cannot be empty.")
 			return
 		}
-		absPath = inputPath
-		// Lưu vào memory
-		fact := fmt.Sprintf("The directory of %s is %s", location, absPath)
+
+		absPath = pathInput
+
+		// Save new memory
+		fact := fmt.Sprintf("folder:%s|parent:%s|path:%s", location, "__root__", absPath)
 		*memory = append(*memory, fact)
-		_ = memory_func.SaveMemory("memory.txt", *memory)
-		fmt.Printf("✅ \"%s\" path saved to memory.\n", location)
+		memory_func.SaveMemory("memory.txt", *memory)
+		fmt.Println("✅ Saved location to memory.")
+	} else if len(matches) == 1 {
+		absPath = matches[0].Path
+	} else {
+		chosen := chooseFolder(matches)
+		if chosen == nil {
+			return
+		}
+		absPath = chosen.Path
 	}
 
-	// Nếu thiếu folder name, hỏi user
-	if folderName == "" || folderName == "null" {
-		fmt.Print("📂 What should the folder be called? ")
-		folderName, _ = reader.ReadString('\n')
-		folderName = strings.TrimSpace(folderName)
+	// Ask for folder name if missing
+	if folderName == "" {
+		fmt.Print("📂 What should the new folder be called? ")
+		nameInput, _ := reader.ReadString('\n')
+		folderName = strings.TrimSpace(nameInput)
 		if folderName == "" {
 			fmt.Println("❌ Folder name cannot be empty.")
 			return
 		}
 	}
 
+	// --- Create folder ---
 	fullPath := filepath.Join(absPath, folderName)
-	fmt.Println("📁 Full path to create:", fullPath)
+	fmt.Println("📁 Full path:", fullPath)
 
-	// Kiểm tra xem đã có fact này trong memory chưa
-	fact := fmt.Sprintf("The directory of %s is %s", folderName, fullPath)
-	existed := false
-	for _, line := range *memory {
-		if strings.TrimSpace(line) == fact {
-			existed = true
-			break
-		}
-	}
-
-	// Tạo folder nếu chưa tồn tại trên ổ đĩa
+	// Check existence
 	if _, err := os.Stat(fullPath); err == nil {
-		fmt.Println("⚠️ (AI) Folder already exists at:", fullPath)
+		fmt.Println("⚠️ Folder already exists.")
 	} else {
 		cmd := exec.Command("mkdir", "-p", fullPath)
 		if err := cmd.Run(); err != nil {
 			fmt.Println("❌ Failed to create folder:", err)
 			return
 		}
-		fmt.Println("✅ Folder created successfully at:", fullPath)
+		fmt.Println("✅ Folder created successfully.")
 	}
 
-	// Nếu chưa có trong memory thì mới lưu
-	if !existed {
-		*memory = append(*memory, fact)
-		if err := memory_func.SaveMemory("memory.txt", *memory); err != nil {
-			fmt.Println("❌ Error saving folder info to memory:", err)
-		} else {
-			fmt.Printf("✅ Memory updated: %s\n", fact)
+	// Save to memory uniquely
+	fact := fmt.Sprintf("folder:%s|parent:%s|path:%s", folderName, location, fullPath)
+
+	exists := false
+	for _, line := range *memory {
+		if line == fact {
+			exists = true
+			break
 		}
+	}
+
+	if !exists {
+		*memory = append(*memory, fact)
+		memory_func.SaveMemory("memory.txt", *memory)
+		fmt.Println("💾 Memory updated.")
 	}
 }
 
