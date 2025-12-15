@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-// Han
 func HandleAppOpenRequest(input string, memory *[]string) {
 	prompt := fmt.Sprintf(`
 You are an AI assistant. The user wants to open an application.
